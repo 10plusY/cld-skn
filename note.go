@@ -3,7 +3,6 @@ package cloudskine
 import (
 	"fmt"
 	"regexp"
-	"io"
 	"strings"
 )
 
@@ -47,68 +46,62 @@ func (n Note) parseTags() ([]string, []string) {
 
 func (n Note) parseAllTags() []string {
 	htags, btags := n.parseTags()
-	return append(htags, btags...)
+	tags := make([]string, len(htags))
+	copy(tags, htags)
+	for i := range btags {
+		for _, tag := range tags {
+			if btags[i] != tag {
+				tags = append(tags, btags[i])
+			}
+		}
+	}
+	return tags
 }
 
-func (n Note) recordVals() []interface{} {
+func (n Note) toDict(tagged, separate bool) map[string]interface{} {
+	dict := make(map[string]interface{})
+	dict["header"] = n.Header
+	dict["body"] = n.Body
+
 	if n.hasNamespace() == true {
-		return []interface{}{n.Namespace, n.Header, n.Body}
-	}
-	return []interface{}{n.Header, n.Body}
-}
-
-func (n Note) annotationList() []string {
-	if n.hasNamespace() == true {
-		return []string{"NAMESPACE", "HEADER", "BODY"}
-	}
-	return []string{"HEADER", "BODY"}
-}
-
-func (n Note) toRecord() string {
-	var tks []string
-	vals := n.recordVals()
-
-	if n.annotate == false {
-		for _ = range vals {
-			tks = append(tks, "%s")
-		}
-	} else {
-		tks = n.annotationList()	
-		for i, _ := range vals {
-			shift := 2 * i + 1
-			tks = append(tks[:shift], append([]string{"%s"}, tks[shift:]...)...)
-		}
+		dict["namespace"] = n.Namespace
 	}
 
-	return fmt.Sprintf(strings.Join(tks, ","), vals...)
-}
-
-func (n Note) toTaggedRecord(separate bool) string {
-	var rstr string
-	rec := n.toRecord()
-
-	if n.annotate == false {
+	if tagged == true {
 		if separate == true {
-			rstr = "%s,%s,%s"
+			dict["headertags"], dict["bodytags"] = n.parseTags()
 		} else {
-			rstr = "%s,%s"
-		}
-	} else {
-		if separate == true {
-			rstr = "%s,HEADERTAGS:%s,BODYTAGS:%s"
-		} else {
-			rstr = "%s,TAGS:%s"
+			dict["tags"] = n.parseAllTags()
 		}
 	}
 
-	if separate == true {
-		htags, btags := n.parseTags()
-		return fmt.Sprintf(rstr, rec, htags, btags)
+	return dict
+}
+
+func (n Note) toRecord(dict map[string]interface{}) []string {
+	rec := make([]string, len(dict))
+	for key, val := range dict {
+		if n.annotate == false {
+			if _, ok := val.(string); ok == true {
+				rec = append(rec, val.(string))
+			} else {
+				rec = append(rec, strings.Join(val.([]string), ""))
+			}	
+		} else {
+			if _, ok := val.(string); ok == true {
+				rec = append(rec, fmt.Sprintf("%s%s", key, val.(string)))
+			} else {
+				rec = append(rec, fmt.Sprintf("%s%s", key, strings.Join(val.([]string), "")))
+			}
+		}
 	}
-
-	return fmt.Sprintf(rstr, rec, n.parseAllTags())
+	return rec
 }
 
-func (n Note) bufferNote() io.Reader {
-	return strings.NewReader(n.toRecord())
+func (n Note) ToRecord() []string {
+	return n.toRecord(n.toDict(false, false))
 }
+
+func (n Note) ToTaggedRecord(separate bool) []string {
+	return n.toRecord(n.toDict(true, separate))
+} 
