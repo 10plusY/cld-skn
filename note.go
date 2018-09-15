@@ -32,7 +32,7 @@ func (n Note) isTagged() bool {
 		return false
 	}
 
-	return r.MatchString(n.Header) || r.MatchString(n.Body) 
+	return r.MatchString(n.Header) || r.MatchString(n.Body)
 }
 
 func (n Note) parseTags() ([]string, []string) {
@@ -59,14 +59,13 @@ func (n Note) parseAllTags() []string {
 }
 
 func (n Note) toDict(tagged, separate bool) map[string]interface{} {
-	dict := make(map[string]interface{})
-	dict["header"] = n.Header
-	dict["body"] = n.Body
-
+	dict := map[string]interface{} {
+		"header": n.Header,
+		"body": n.Body,
+	}
 	if n.hasNamespace() == true {
 		dict["namespace"] = n.Namespace
 	}
-
 	if tagged == true {
 		if separate == true {
 			dict["headertags"], dict["bodytags"] = n.parseTags()
@@ -86,7 +85,7 @@ func (n Note) toRecord(dict map[string]interface{}) []string {
 				rec = append(rec, val.(string))
 			} else {
 				rec = append(rec, strings.Join(val.([]string), ""))
-			}	
+			}
 		} else {
 			if _, ok := val.(string); ok == true {
 				rec = append(rec, fmt.Sprintf("%s%s", key, val.(string)))
@@ -104,4 +103,4 @@ func (n Note) ToRecord() []string {
 
 func (n Note) ToTaggedRecord(separate bool) []string {
 	return n.toRecord(n.toDict(true, separate))
-} 
+}
