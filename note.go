@@ -19,34 +19,34 @@ func (n Note) hasNamespace() bool {
 }
 
 func (n Note) compileTagRegex() (*regexp.Regexp, error) {
-	r, err := regexp.Compile(fmt.Sprintf("(?:^|/s)(?:%s)([a-zA-Z/d]+)", string(n.tagChar)))
+	reg, err := regexp.Compile(fmt.Sprintf("(?:^|/s)(?:%s)([a-zA-Z/d]+)", string(n.tagChar)))
 	if err != nil {
 		return nil, err
 	}
-	return r, nil
+	return reg, nil
 }
 
 func (n Note) isTagged() bool {
-	r, err := n.compileTagRegex()
+	reg, err := n.compileTagRegex()
 	if err != nil {
 		return false
 	}
 
-	return r.MatchString(n.Header) || r.MatchString(n.Body)
+	return reg.MatchString(n.Header) || reg.MatchString(n.Body)
 }
 
 func (n Note) parseTags() ([]string, []string) {
-	r, err := n.compileTagRegex()
+	reg, err := n.compileTagRegex()
 	if err != nil {
 		return []string{}, []string{}
 	}
 
-	return r.FindAllString(n.Header, -1), r.FindAllString(n.Body, -1)
+	return reg.FindAllString(n.Header, -1), reg.FindAllString(n.Body, -1)
 }
 
 func (n Note) parseAllTags() []string {
+	var tags []string
 	htags, btags := n.parseTags()
-	tags := make([]string, len(htags))
 	copy(tags, htags)
 	for i := range btags {
 		for _, tag := range tags {
@@ -59,10 +59,11 @@ func (n Note) parseAllTags() []string {
 }
 
 func (n Note) toDict(tagged, separate bool) map[string]interface{} {
-	dict := map[string]interface{} {
+	dict := map[string]interface{}{
 		"header": n.Header,
-		"body": n.Body,
+		"body":   n.Body,
 	}
+
 	if n.hasNamespace() == true {
 		dict["namespace"] = n.Namespace
 	}
