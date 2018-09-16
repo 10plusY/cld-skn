@@ -12,7 +12,8 @@ import (
 )
 
 type Publisher interface {
-	Publish() error
+	Prepare(*os.File, int64) (interface{}, error)
+	Publish(*os.File) error
 }
 
 type S3Publisher struct {
@@ -21,7 +22,7 @@ type S3Publisher struct {
 	Logger    Logger
 }
 
-func getPutObject(file *os.File, size int64) (interface{}, error) {
+func (s3p *S3Publisher) Prepare(file *os.File, size int64) (interface{}, error) {
 	buffer := make([]byte, size)
 	file.Read(buffer)
 	return s3.New(s3p.Session).PutObject(&s3.PutObjectInput{
@@ -42,9 +43,9 @@ func (s3p *S3Publisher) Publish(file *os.File) error {
 
 	if info, err := file.Stat(); err != nil {
 		s3p.Logger.Log((fmt.Sprintf("Error: %s", err)), true)
-	} else {
-		size = info.Size()
-		_, err := getPutObject(file, info.Size())
 		return err
 	}
+
+	_, err := getPutObject(file, info.Size())
+	return err
 }
